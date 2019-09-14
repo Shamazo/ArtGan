@@ -17,17 +17,19 @@ class ArtGanParser(object):
         parser.add_argument('-pwp', '--pretrained_weights_path', default=None, type=str, help='pretrained weights path of the model, takes a folder if loading checkpoint, takes a *.pth string if specific weights')
         parser.add_argument('-sm', '--save_model', default=True, type=bool, help='save model [True/False]')
         parser.add_argument('-sd', '--save_dir', default="weights", help="Directory to save model to")
-        parser.add_argument('-dd', '--data_dir', default="proc_moma", help='Date directory')
-        parser.add_argument('-bs', '--batch_size', default=4, help="Training batch size")
-        parser.add_argument('-Glr', '--gen_learning_rate', default=0.0002, help="Set initial learning rate for generator")
-        parser.add_argument('-Dlr', '--disc_learning_rate', default=0.0002, help="Set initial learning rate for discriminator")
-        parser.add_argument('-img_sz', '--image_size', default=128, help="Set image size of height/width, assuming square images")
+        parser.add_argument('-dd', '--data_dir', default="proc_moma64", help='Date directory')
+        parser.add_argument('-bs', '--batch_size', default=64, help="Training batch size")
+        parser.add_argument('-Glr', '--gen_learning_rate', default=0.0001, help="Set initial learning rate for generator")
+        parser.add_argument('-Dlr', '--disc_learning_rate', default=0.0001, help="Set initial learning rate for discriminator")
+        parser.add_argument('-img_sz', '--image_size', default=64, help="Set image size of height/width, assuming square images")
         parser.add_argument('-lat_dim', '--latent_dimension', default=32, help="Set latent noise dimension")
         parser.add_argument('-cont_dim', '--cont_dimension', default=2, help="Set number of continuous variables")
         parser.add_argument('-n_classes', '--n_classes', default=2, help="Set number of classes")
         parser.add_argument('-starte', '--start_epoch', default=0, help="epoch to start training from")
         parser.add_argument('-ee', '--end_epoch', default=400, help="epoch to stop training on" )
+        parser.add_argument('-gnb', '--num_gen_batches', default=100000, type=int, help='number of batches to train the generator for')
         parser.add_argument('-mg', '--multi_gpu', default=False, help="Run on multiple GPUS")
+        parser.add_argument('-gpw', '--gradient_penalty_weight', default=10, type=float, help="Weight for the gradient penalty per wgan-gp")
         return parser
 
     def parse(self, argv, desc=None):
@@ -47,6 +49,8 @@ class ArtGanParser(object):
         self.start_epoch = options.start_epoch
         self.end_epoch = options.end_epoch
         self.multi_gpu = options.multi_gpu
+        self.num_gen_batches = options.num_gen_batches
+        self.gradient_penalty_weight = options.gradient_penalty_weight
 
     def to_json(self, file_name):
         # make a copy

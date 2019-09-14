@@ -54,15 +54,15 @@ class Discriminator(nn.Module):
                      nn.LeakyReLU(0.2, inplace=True), 
                      nn.Dropout2d(0.25)]
             if bn:
-                block.append(nn.BatchNorm2d(out_filters, 0.8))
+                block.append(nn.LayerNorm(out_filters))
             return block
 
         self.conv_blocks = nn.Sequential(
             # assuming only 3 channel rgb input images
             *convolutional_block(3, 16, bn=False),
-            *convolutional_block(16, 32),
-            *convolutional_block(32, 64),
-            *convolutional_block(64, 128),
+            *convolutional_block(16, 32, bn=False),
+            *convolutional_block(32, 64, bn=False),
+            *convolutional_block(64, 128, bn=False),
         )
 
         # The height and width of downsampled image
@@ -82,3 +82,57 @@ class Discriminator(nn.Module):
         latent_code = self.latent_layer(out)
 
         return validity, label.float(), latent_code
+
+
+class LayerNormalization(nn.Module):
+
+    def __init__(self,
+                 normal_shape,
+                 gamma=True,
+                 beta=True,
+                 epsilon=1e-10):
+        """Layer normalization layer
+        See: [Layer Normalization](https://arxiv.org/pdf/1607.06450.pdf)
+        :param normal_shape: The shape of the input tensor or the last dimension of the input tensor.
+        :param gamma: Add a scale parameter if it is True.
+        :param beta: Add an offset parameter if it is True.
+        :param epsilon: Epsilon for calculating variance.
+        """
+        super(LayerNormalization, self).__init__()
+        if isinstance(normal_shape, int):
+            normal_shape = (normal_shape,)
+        else:
+            normal_shape = (normal_shape[-1],)
+        self.normal_shape = torch.Size(normal_shape)
+        self.epsilon = epsilon
+        if gamma:
+            self.gamma = nn.Parameter(torch.Tensor(*normal_shape))
+        else:
+            self.register_parameter('gamma', None)
+        if beta:
+            self.beta = nn.Parameter(torch.Tensor(*normal_shape))
+        else:
+            self.register_parameter('beta', None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        if self.gamma is not None:
+            self.gamma.data.fill_(1)
+        if self.beta is not None:
+            self.beta.data.zero_()
+
+    def forward(self, x):
+        mean = x.mean(dim=-1, keepdim=True)
+        var = ((x - mean) ** 2).mean(dim=-1, keepdim=True)
+        std = (var + self.epsilon).sqrt()
+        y = (x - mean) / std
+        if self.gamma is not None:
+            y *= self.gamma
+        if self.beta is not None:
+            y += self.beta
+        return y
+
+    def extra_repr(self):
+        return 'normal_shape={}, gamma={}, beta={}, epsilon={}'.format(
+            self.normal_shape, self.gamma is not None, self.beta is not None, self.epsilon,
+        )
